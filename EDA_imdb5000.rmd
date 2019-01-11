@@ -1,0 +1,628 @@
+---
+title: 'Explorando e Resumindo Dados: IMDB 5000 filmes'
+output:
+  html_document:
+    df_print: paged
+---
+
+Este projeto fará uma análise dos dados do conjunto de dados [IMDB 5000 Movie Dataset](https://www.kaggle.com/carolzhangdc/imdb-5000-movie-dataset), buscando achar as principais variáveis que fazem com que o filme seja lucrativo para o estúdio que o produziu.
+Serão utilizados dados de filmes lançados desde os anos 20 até 2016, praticamente 100 anos na história do cinema. Fatores como orçamento, popularidade do filme, diretor e elenco no Facebook, score do filme no IMDB, quantidade de votos do filme no site IMDB, faturamento do filme e a classificação de conteúdo do filme serão usados para determinar fatores importantes na hora de definir se um filme terá lucro, terá uma boa avaliação no IMDB e até mesmo qual tipo de filmes atrai mais investimentos (orçamentos maiores).
+
+O dataset utilizado consiste de diversas variáveis, tais como:
+
+  - movie_title: título do filme
+  - duration: duração do filme
+  - director_name: nome do diretor
+  - director_facebook_likes: quantidade de curtidas na página do diretor no Facebook
+  - actor_1_name: nome do ator principal
+  - actor_1_facebook_likes: quantidade de curtidas na página do ator principal no Facebook
+  - actor_2_name: nome de outro ator principal
+  - actor_2_facebook_likes: quantidade de curtidas na página do outro ator principal no Facebook
+  - actor_3_name: nome de outro ator principal
+  - actor_3_facebook_likes: quantidade de curtidas na página do outro ator principal no Facebook
+  - num_user_for_reviews: quantidade de avaliações no IMDB
+  - num_critic_for_reviews: quantidade de avaliações de críticos no IMDB
+  - num_voted_users: quantidade de pessoas que votou no filme
+  - cast_total_facebook_likes: quantidade de curtidas de todo o elenco do filme no Facebook
+  - movie_facebook_likes: quantidade de curtidas na página oficial do filme no Facebook
+  - plot_keywords: quantidade de palavras chave descrevendo o filme
+  - facenumber_in_poster: quantidade de atores no poster oficial
+  - color: cor do filme, colorido ou preto e branco
+  - genres: gêneros nos quais o filme se enquadra
+  - title_year: ano do filme
+  - language: idioma
+  - country: país onde o filme foi produzido
+  - content_rating: classificação do conteúdo
+  - aspect_ratio: proporção da tela
+  - movie_imdb_link: link do filme no IMDB
+  - gross: ganhos do filme (em dólares)
+  - budget: despesas do filme (em dólares)
+  - imdb_score: média das avaliações no IMDB
+
+## Importando e explorando os dados
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Importar pacotes
+library(ggplot2)
+library(dplyr)
+library(corrplot)
+library(GGally)
+library(gridExtra)
+library(grid)
+library(stringr)
+library(ggrepel)
+```
+
+Após importar os pacotes necessários, é hora de importar e manipular o conjunto de dados do nosso projeto
+
+```{r echo=FALSE}
+# Importar o dataset
+IMDB <- read.csv('imdb5000.csv' <- choose.files(), sep=",")
+
+# Analisar a estrutura do dataset
+str(IMDB)
+```
+
+## MANIPULANDO E LIMPANDO DADOS
+
+Primeiro veremos quantos dados observáveis estão duplicados.
+
+```{r echo=FALSE}
+# Linhas duplicadas
+sum(duplicated(IMDB))
+```
+
+Temos 45 linhas duplicadas que serão removidas.
+
+```{r echo=FALSE}
+# Deletar as linhas duplicadas
+IMDB <- IMDB[!duplicated(IMDB), ]
+nrow(IMDB)
+```
+
+Todos os títulos dos filmes ficaram com um Â ao seu final que devem ser removidos.
+OBS: este output será ocultado por gerar um texto muito longo e de pouco valor para a análise.
+
+```{r echo=FALSE, include=FALSE}
+# Substitui Â por um espaço
+IMDB$movie_title <- gsub("Â", "", as.character(factor(IMDB$movie_title)))
+
+# Remove o espaço em branco
+str_trim(IMDB$movie_title, side = "right")
+```
+
+Agora, vamos achar as dados nulos do nosso dataset.
+
+```{r echo=FALSE}
+# Converte os zeros das seguintes colunas para NA
+IMDB[,c(9,23)][IMDB[,c(9,23)] == 0] <- NA
+```
+
+```{r echo=FALSE}
+colSums(sapply(IMDB, is.na))
+```
+
+O dataset contém dados nulos referentes às despesas para 874 filmes e para o lucro de 487 filmes. Outras variáveis como a proporção da tela e o ano do filme também contém uma quantidade relevante de dados nulos. Como lucro e despesas serão variáveis importantes para o nosso estudo, os filmes que contém valores nulos nestas variáveis serão removidos.
+
+
+```{r echo=FALSE}
+IMDB <- IMDB[!is.na(IMDB$gross), ]
+IMDB <- IMDB[!is.na(IMDB$budget), ]
+nrow(IMDB)
+```
+
+Ainda há uma boa quantidade de filmes para ser analisada. As demais variáveis com valores nulos serão ignoradas, ou terão seus valores substituídos pela média da coluna.
+
+```{r echo=FALSE}
+# Substitui NA pelo valor médio (arredondado) para a variável facenumber_in_poster
+IMDB$facenumber_in_poster[is.na(IMDB$facenumber_in_poster)] <- round(mean(IMDB$facenumber_in_poster, na.rm = TRUE))
+# Converte os zeros das seguintes colunas para NA
+IMDB[,c(5,6,8,13,24,26)][IMDB[,c(5,6,8,13,24,26)] == 0] <- NA
+# Substitui NA pelo valor médio (arredondado) para as respectivas variáveis
+IMDB$num_critic_for_reviews[is.na(IMDB$num_critic_for_reviews)] <- round(mean(IMDB$num_critic_for_reviews, na.rm = TRUE))
+IMDB$duration[is.na(IMDB$duration)] <- round(mean(IMDB$duration, na.rm = TRUE))
+IMDB$director_facebook_likes[is.na(IMDB$director_facebook_likes)] <- round(mean(IMDB$director_facebook_likes, na.rm = TRUE))
+IMDB$actor_3_facebook_likes[is.na(IMDB$actor_3_facebook_likes)] <- round(mean(IMDB$actor_3_facebook_likes, na.rm = TRUE))
+IMDB$actor_1_facebook_likes[is.na(IMDB$actor_1_facebook_likes)] <- round(mean(IMDB$actor_1_facebook_likes, na.rm = TRUE))
+IMDB$cast_total_facebook_likes[is.na(IMDB$cast_total_facebook_likes)] <- round(mean(IMDB$cast_total_facebook_likes, na.rm = TRUE))
+IMDB$actor_2_facebook_likes[is.na(IMDB$actor_2_facebook_likes)] <- round(mean(IMDB$actor_2_facebook_likes, na.rm = TRUE))
+IMDB$movie_facebook_likes[is.na(IMDB$movie_facebook_likes)] <- round(mean(IMDB$movie_facebook_likes, na.rm = TRUE))
+```
+
+Ainda falta ajustar a classificação de conteúdo dos filmes de modo que sejam mais atuais, algumas contidas no dataset não são mais utilizadas, além disso, valores nulos/em branco serão substituídos pela classificação mais popular, visto que não temos uma média que possa ser usada.
+
+```{r echo=FALSE}
+# Resumo geral da classificação de conteúdo
+table(IMDB$content_rating)
+```
+
+51 filmes possuem valores em branco, que serão considerados como valores nulos
+
+```{r echo=FALSE}
+# Substituindo classificações obsoletas
+IMDB$content_rating[IMDB$content_rating == 'M']   <- 'PG' 
+IMDB$content_rating[IMDB$content_rating == 'GP']  <- 'PG' 
+IMDB$content_rating[IMDB$content_rating == 'X']   <- 'NC-17'
+
+# Substituindo classificações em branco pela mais popular
+IMDB$content_rating[IMDB$content_rating == '']   <- 'R'
+
+# Substituindo demais classificações pela mais popular
+IMDB$content_rating[IMDB$content_rating == 'Approved']  <- 'R' 
+IMDB$content_rating[IMDB$content_rating == 'Not Rated'] <- 'R' 
+IMDB$content_rating[IMDB$content_rating == 'Passed']    <- 'R' 
+IMDB$content_rating[IMDB$content_rating == 'Unrated']   <- 'R'
+
+# Considerar a variável como uma variável categórica
+IMDB$content_rating <- factor(IMDB$content_rating)
+
+# Resumo das categorias após a manipulação
+table(IMDB$content_rating)
+```
+
+- G: todas as idades permitidas
+- PG: pais devem acompanhar crianças
+- PG-13: pais devem acompanhar crianças de até 13 anos
+- R: pais devem acompanhar adolescentes de até 17 anos
+- NC-17: não recomendado para menores de 17 anos
+
+Variáveis como o idioma e o país poderão ser importantes para determinar o lucro e a avaliação no IMDB dos filmes? Vamos analisar!
+
+```{r echo=FALSE}
+table(IMDB$language)
+```
+
+Praticamente todos os filmes do dataset são em inglês, logo, o idioma do filme não será uma variável relevante a tentar relacionar com o lucro e com o IMDB rating.
+
+```{r echo=FALSE}
+table(IMDB$country)
+```
+
+Novamente, a praticamente todos os filmes foram produzidos nos Estados Unidos, e em segundo lugar no Reino Unido. A amostragem que temos dos outros países é muito pequena, logo, o país não será uma variável a ser analisada também.
+
+```{r echo=FALSE}
+# Excluindo algumas variáveis que não serão analisadas
+IMDB_data <- subset(IMDB, select = -c(country, num_critic_for_reviews, num_user_for_reviews, language, color, genres, facenumber_in_poster, plot_keywords, movie_imdb_link, aspect_ratio, actor_1_name, actor_1_facebook_likes, actor_2_name, actor_2_facebook_likes, actor_3_name, actor_3_facebook_likes))
+```
+
+O último passo da nossa manipulação de dados será criar a variável lucro (profit) e com isso excluir a variável gross (ganhos)
+
+```{r echo=FALSE}
+# Criando a variável profit (lucro) e excluindo a variável gross
+IMDB_data$profit <- IMDB_data$gross - IMDB_data$budget
+
+IMDB_data <- subset(IMDB_data, select = -c(gross))
+```
+
+Agora nossos dados estão limpos e ajustados. Além disso, nosso dataset foi simplificado para que a análise ficasse mais clara.
+
+```{r echo=FALSE}
+# Analisando a estrutura do dataset
+str(IMDB_data)
+```
+
+## DETERMINANDO UMA QUANTIDADE MÍNIMA DE REVIEWS
+
+Nossa análise deverá estabelecer uma quantidade mínima votos para que o filme entre nela.
+
+```{r echo=FALSE}
+summary(IMDB_data$num_voted_users)
+```
+
+```{r echo=FALSE}
+# Excluindo filmes com menos de 50389 análises 
+IMDB_data <- IMDB_data %>%
+  filter(num_voted_users >= 50389)
+
+nrow(IMDB_data)
+```
+
+Após aplicar um filtro que determinasse que o filme deveria ter pelo menos 50389 votos na plataforma IMDB nosso estudo ficou com 1928 filmes.
+
+# ANÁLISE UNIVARIADA
+
+Não será uma variável utilizada para prever o imdb rating ou buscar uma correlação com as demais variáveis, mas vamos analisar a quantidade de filmes lançados por ano no nosso conunto de dados a título de curiosidade
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Quantidade de filmes lançados por ano
+ggplot(aes(title_year), data = IMDB_data) + 
+  geom_histogram(binwidth = 1) 
+
+```
+
+Há uma quantidade muito maior de filmes lançados a partir a década de 90 nos nossos dados. Todavia, o ano de lançamento não será uma variável relacionada com o imdb rating.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Removendo a variável ano de lançamento
+IMDB_data <- subset(IMDB_data, select = -c(title_year))
+```
+
+Vamos dividir as variáveis restantes da seguinte forma:
+- Popularidade: director_facebook_likes, cast_total_facebook_likes, num_voted_users, movie_facebook_likes;
+- Outros: content_rating, duration, imdb_score;
+- Financeiro: profit, budget;
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Histogramas das variáveis relacionadas à popularidade do filme
+p1 <- ggplot(aes(director_facebook_likes), data = IMDB_data) + 
+  geom_histogram() 
+p2 <- ggplot(aes(cast_total_facebook_likes), data = IMDB_data) + 
+  geom_histogram() 
+p3 <- ggplot(aes(movie_facebook_likes), data = IMDB_data) + 
+  geom_histogram() 
+p4 <- ggplot(aes(num_voted_users), data = IMDB_data) + 
+  geom_histogram()
+
+grid.arrange(p1,p2,p3,p4, ncol=2)
+```
+
+Todos os dados relacionados com a popularidade do filme apresentam uma distribuição positiva
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Histogramas das variáveis relacionadas à popularidade do filme
+
+p5 <- ggplot(aes(director_facebook_likes), data = IMDB_data) + 
+  geom_histogram() +
+  scale_x_log10()
+p6 <- ggplot(aes(cast_total_facebook_likes), data = IMDB_data) + 
+  geom_histogram() +
+  scale_x_log10()
+p7 <- ggplot(aes(movie_facebook_likes), data = IMDB_data) + 
+  geom_histogram(binwidth = .025) +
+  scale_x_log10()
+p8 <- ggplot(aes(num_voted_users), data = IMDB_data) + 
+  geom_histogram(binwidth = .025) +
+  scale_x_log10()
+
+grid.arrange(p5,p6,p7,p8, ncol=2)
+```
+
+Após aplicar a escala logarítmica foi possível obter um padrão mais próximo do normal para a distribuição de curtidas nas páginas dos diretores e dos filmes, e a distribuição de curtidas considerando todo o elenco apresentou um comportamento bimodal.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Histogramas das variáveis relacionadas a outras caracteristicas
+
+p9 <- ggplot(aes(content_rating), data = IMDB_data) + 
+  geom_histogram(stat="count") 
+p10 <- ggplot(aes(duration), data = IMDB_data) + 
+  geom_histogram(binwidth = 1) 
+p11 <- ggplot(aes(imdb_score), data = IMDB_data) + 
+  geom_histogram(binwidth = .25)
+
+grid.arrange(p9,p10,p11, ncol=1)
+```
+
+Podemos ver que há uma grande quantidade de filmes R e PG-13 comparado com as demais classificações de conteúdo. 
+Quanto ao tempo dos filmes podemos ver que a maioria possui aproximadamente 2 horas de duração, então vamos criar um novo gráfico para filmes com duração entre 60 e 180 minutos.
+Poucos filmes da nossa lista possuem um IMDB score inferior a 5, também usaremos um valor mínimo de IMDB igual a 5 para criar nosso novo histograma.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Histogramas das variáveis relacionadas a outras caracteristicas
+p12 <- ggplot(aes(duration), data = IMDB_data) + 
+  geom_histogram(binwidth = 1) +
+  xlim(60,180)
+p13 <- ggplot(aes(imdb_score), data = IMDB_data) + 
+  geom_histogram(binwidth = .1) +
+  xlim(5,9.5)
+
+grid.arrange(p12,p13,ncol=1)
+```
+
+Os filtros utilizados deixaram as variáveis com uma distribuição normal, sendo assim, usaremos estes filtros de maneira definitiva para o nosso estudo.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Deixar apenas os limites desejados de duração e imdb score
+IMDB_data <- IMDB_data %>%
+  filter(duration %in% c(60:180)) %>%
+  filter(imdb_score >= 5)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Histogramas das variáveis relacionadas a caracteristicas financeiras
+p14 <- ggplot(aes(budget), data = IMDB_data) + 
+  geom_histogram()
+p15 <- ggplot(aes(profit), data = IMDB_data) + 
+  geom_histogram()
+
+grid.arrange(p14,p15,ncol=2)
+```
+
+Claramente temos um problema com os valores de lucro e orçamento no dataset. Vamos determinar que os filmes do dataset não tenham orçamento superior a 350 milhões de US$.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Deixar apenas os limites desejados de duração e imdb score
+
+IMDB_data <- IMDB_data %>%
+  filter(budget < 350000000)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+summary(IMDB_data$budget)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Histogramas das variáveis relacionadas a caracteristicas financeiras
+p16 <- ggplot(aes(budget), data = IMDB_data) + 
+  geom_histogram(binwidth = 10000000)
+p17 <- ggplot(aes(profit), data = IMDB_data) + 
+  geom_histogram(binwidth = 10000000)
+
+grid.arrange(p16,p17,ncol=2)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+summary(IMDB_data$profit)
+```
+
+Para o orçamento temos uma distribuição positiva, do tipo calda longa, enquanto para o lucro temos algo próximo a uma distribuição normal.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Histogramas das variáveis relacionadas a caracteristicas financeiras
+p18 <- ggplot(aes(budget), data = IMDB_data) + 
+  geom_histogram() +
+  scale_x_log10()
+p19 <- ggplot(aes(profit), data = IMDB_data) + 
+  geom_histogram()+
+  scale_x_log10()
+
+grid.arrange(p18,p19,ncol=2)
+
+```
+
+Aplicando a escala logaritimica podemos ver algo mais próximo a uma distribuição normal dos dados observados.
+
+
+## ANÁLISE BIVARIADA
+
+Vamos começar analisando a relação entre algumas variáveis.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Scatter plot relacionando as variáveis mais correlacionadas ao lucro
+p20 <- ggplot(IMDB_data, aes(num_voted_users, profit)) + 
+  geom_point()
+p21 <- ggplot(IMDB_data, aes(imdb_score, profit)) + 
+  geom_point()
+p22 <- ggplot(IMDB_data, aes(director_facebook_likes, profit)) + 
+  geom_point()
+
+
+grid.arrange(p20,p21,p22, ncol=3)
+```
+
+Os scatter plots confirmam uma tendência de filmes com mais votos terem um lucro maior. No entanto, as demais correlações não ficam tão evidentes, exatamente por serem mais fracas.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Scatter plot relacionando lucro e orçamento
+ggplot(IMDB_data, aes(budget, profit)) + 
+  geom_point()
+
+```
+
+Este gráfico apresenta duas tendências: filmes caros que deram muito lucro e filmes caros que deram muito prejuízo, o que explica a correlação de praticamente 0 entre as variáveis lucro e orçamento.
+
+## ANÁLISE MULTIVARIADA
+
+Vamos começar a análise multivariada com uma matriz de correlações.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggcorr(IMDB_data, label = TRUE, label_round = 2, 
+       label_size = 3.5, size = 2, hjust = .85)
+```
+
+Podemos ver que a variável lucro está mais correlacionada com a quantidade de usuários que avaliaram o filme (0.44) do que com o IMDB score em si (correlação de 0.25). Além disso, podemos ver que a popularidade do filme, elenco e diretor no Facebook não são tão importantes e que o orçamento tem uma correlação bastante fraca com o lucro do filme.
+O imdb score apresenta uma forte correlação com a quantidade de votos do filme no site IMDB, enquanto isso podemos ver que o orçamento está mais correlacionado de forma positiva com o tempo do filme (filmes maiores podem necessitar de mais recursos, mais edição, etc.) e com a quantidade de votos do filme no IMDB.
+
+Por fim, vamos relacionar a classificação de conteúdo com o lucro e analisar se temos alguma tendência.
+
+Primeiro vamos determinar um ponto de corte para a variável lucro
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+summary(IMDB_data$profit)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Scatter plot relacionando lucro, número de votos e classificação de conteúdo
+ggplot(IMDB_data, aes(num_voted_users, profit/1000000, color=content_rating)) + 
+  geom_point() +
+  geom_hline(aes(yintercept = 29.2), linetype = 2)
+```
+
+Mesmo sendo a grande maioria na nossa análise, temos poucos filmes de classificação de conteúdo R entre os mais lucrativos.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Scatter plot relacionando lucro, número de votos e classificação de conteúdo
+IMDB_data %>%
+  arrange(desc(profit)) %>%
+  top_n(30, profit) %>%
+  ggplot(aes(x=num_voted_users, y=profit/1000000, color=content_rating, size=budget/1000000)) +
+  geom_point() +
+  geom_text_repel(aes(label=movie_title))
+```
+
+Entre os 30 filmes mais lucrativos, apenas 3 possuem classificação R, podendo-se ver uma tendência de filmes PG e PG-13 serem as categorias mais lucrativas
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+summary(IMDB_data$imdb_score)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Scatter plot relacionando lucro, número de votos e classificação de conteúdo
+ggplot(IMDB_data, aes(num_voted_users, imdb_score, color=content_rating)) + 
+  geom_point() +
+  geom_hline(aes(yintercept = 6.9), linetype = 2)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Scatter plot relacionando imdb score, número de votos e classificação de conteúdo
+IMDB_data %>%
+  arrange(desc(imdb_score)) %>%
+  top_n(20, imdb_score) %>%
+  ggplot(aes(x=num_voted_users, y=imdb_score, color=content_rating, size=profit/1000000)) +
+  geom_point() +
+  geom_text_repel(aes(label=movie_title))
+```
+
+Em compensação, entre os filmes de maior imdb score podemos ver uma predominância de filmes de classificação R.
+Destes quatro gráficos podemos tirar o seguinte:
+- Filmes mais populares tendem a dar mais lucro e ter maior imdb score
+- Filmes direcionado a um público mais abrangente (PG e PG-13) obtém um maior lucro mesmo tendo um menor imdb score
+- Filmes de classificação de conteúdo R tendem a ter um imdb score superior aos demais
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Comparar imdb score e lucro considerando os 20 filmes mais caros
+IMDB_data %>%
+  top_n(20, budget) %>%
+  ggplot(aes(x = imdb_score, y = profit/1000000, size = budget, color = content_rating)) + 
+  geom_point() + 
+  geom_hline(aes(yintercept = 29.2)) + 
+  geom_vline(aes(xintercept = 6.9)) + 
+  geom_text_repel(aes(label = movie_title), size = 4)
+```
+
+Ao analisarmos os 20 filmes mais caros podemos segmentá-los em 4 grupos distindos:
+- Filmes que ficaram abaixo da média geral de lucro e imdb score
+- Filmes que ficarama abaixo da média em apenas um dos requisitos (lucro ou imdb score)
+- Filmes que ficaram acima da média em ambas as variáveis
+
+Entre os 20 filmes mais caros apenas um deles recebeu a classificação de conteúdo R, o que demonstra que além de lucros menores, filmes de classificação R tendem a receber menores investimentos.
+
+## GRÁFICOS FINAIS
+
+### Primeiro Gráfico
+```{r primeiro_grafico, echo=FALSE, fig.width=7, fig.height=10}
+gp1 <- ggplot(IMDB_data, aes(num_voted_users, profit/10^6, color=content_rating)) + 
+  geom_point(alpha=0.5) +
+  geom_hline(aes(yintercept = 29.2), linetype = 2) +
+  theme_dark() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
+  scale_colour_hue(l = 70, c = 150) +
+  labs(title = "Quantidade de votos vs Lucro",
+       x = "Quantidade de votos",
+       y = "Lucro (milhões de US$)",
+       colour = "Classificação de Conteúdo")
+
+gp2 <- IMDB_data %>%
+  arrange(desc(profit)) %>%
+  top_n(20, profit) %>%
+  ggplot(aes(x=num_voted_users, y=profit/10^6,
+             size=budget/10^6, color=content_rating)) +
+  geom_point(alpha=0.5) +
+  geom_text_repel(aes(label=movie_title, size=40)) + 
+  theme_dark() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
+  scale_colour_hue(l = 70, c = 150) +
+  labs(title = "Quantidade de votos vs Lucro - Top 20",
+       x = "Quantidade de votos",
+       y = "Lucro (milhões de US$)",
+       colour = "Classificação de Conteúdo",
+       size = "Orçamento")
+
+grid.arrange(gp1,gp2,ncol=1)
+```
+
+### Discussão sobre o Primeiro Gráfico
+
+O lucro de um filme possui uma boa correlação com a quantidade de votos que o filme recebe no sistema IMDB, além disso podemos perceber uma maioria de filmes PG e PG-13 entre os mais lucrativos, o que é interessante, pois a grande maioria dos filmes contidos neste dataset são de classificação R.
+Entre os 20 filmes mais lucrativos, apenas 2 são de classificação de conteúdo R, enquanto os outros 18 são filmes mais familiares, demonstrando o motivo pelo qual diversos filmes de super herói ou blockbusters são produzidos com cenas mais leves do que o público mais crítico gostaria.
+Apenas Deadpool e Sniper Americano são os filmes de classificação R entre os mais lucrativos. Deadpool caracteriza-se por cenas bastante pesadas e alguns palavrões, mesmo com o filme tendo um caráter mais cômico. O fato de ser um filme de super herói produzido pela Marvel pode ter feito com que pessoas mais jovens tenham ido ao cinema.
+No top5 dos mais lucrativos podemos ver Avatar, Jurassic World, Star Wars Ep. IV, E.T. e Rei Leão: todos filmes direcionados para a família, sendo um deles uma animação. Outro fator em comum que temos nestes filmes é que 4 deles são ficções científicas com um teor de aventura e de roteiro simples. Ficções científicas de roteiro mais elaborado, como Inception, Matrix, Blade Runner, Brilho Eterno de Uma Mente Sem Lembranças, 2001: Uma Odisséia no Espaço não alcançaram lucros tão grandes mesmo sendo filmes bastante conhecidos e premiados.
+
+### Segundo Gráfico
+```{r segundo_grafico, echo=FALSE, fig.width=8, fig.height=10}
+gp3 <- ggplot(IMDB_data, aes(num_voted_users, imdb_score, color=content_rating)) + 
+  geom_point(alpha=0.5) +
+  geom_hline(aes(yintercept = 6.9), linetype = 2) +
+  theme_dark() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
+  scale_colour_hue(l = 70, c = 150) +
+  labs(title = "Quantidade de votos vs IMDB Score",
+       x = "Quantidade de votos",
+       y = "IMDB Score",
+       colour = "Classificação de Conteúdo")
+
+gp4 <- IMDB_data %>%
+  arrange(desc(imdb_score)) %>%
+  top_n(20, imdb_score) %>%
+  ggplot(aes(x=num_voted_users, y=imdb_score,
+             size=profit/10^6, color=content_rating)) +
+  geom_point(alpha=0.5) +
+  geom_text_repel(aes(label=movie_title), 
+                  size=3) + 
+  theme_dark() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
+  scale_colour_hue(l = 70, c = 150) +
+  labs(title = "Quantidade de votos vs IMDB Score - Top 20",
+       x = "Quantidade de votos",
+       y = "IMDB Score",
+       colour = "Classificação de Conteúdo",
+       size = "Orçamento")
+
+grid.arrange(gp3,gp4,ncol=1)
+```
+
+### Discussão sobre o Segundo Gráfico
+
+A quantidade de votos também demonstrou uma forte correlação com o IMDB Score dos filmes. Como podemos ver, filmes mais avaliados tendem a ter um IMDB Score maior. The Shawshank Redemption é o filme de maior quantidade de avaliações e de maior nota no site IMDB.
+Quando o quesito é IMDB Score, vemos uma diferença clara quando comparado com o lucro: os filmes de maior imdb score possuem classificação de conteúdo R.
+No top20 dos mais bem avaliados temos The Shawshank Redemption, um drama que faz a pessoa se sentir bem ao seu final, mas que tem diversas cenas pesadas, os dois primeiros filmes da triologia Poderoso Chefão também possuem ótima avaliação. No mais, podemos ver dramas e filmes de crítica social com um conteúdo bastante pesado, como American History X, Clube da Luta e Cidade de Deus, além do sanguinário Pulp Fiction de Tarantino, todos com classificação de conteúdo R.
+Entre os filmes de maior imdb score que não possuem classificação de conteúdo R, podemos destacar Forest Gump, Senhor dos Anéis, Star Wars, Interstellar e Inception (estes dois últimos entram na lista de ficções científicas com um enredo mais elabora, o que faz com que tenham menos lucro, mesmo tendo elevada qualidade).
+
+```{r terceiro_grafico, echo=FALSE, fig.width=8, fig.height=10, }
+gp5 <- ggplot(IMDB_data, aes(num_voted_users, budget/10^6, color=content_rating)) + 
+  geom_point(alpha=0.5) +
+  geom_hline(aes(yintercept = 35), linetype = 2) +
+  theme_dark() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
+  scale_colour_hue(l = 70, c = 150) +
+  labs(title = "Quantidade de votos vs Orçamento",
+       x = "Quantidade de votos",
+       y = "Orçamento (milhões de US$)",
+       colour = "Classificação de Conteúdo")
+
+
+gp6 <- IMDB_data %>%
+  top_n(20, budget) %>%
+  ggplot(aes(x = imdb_score, y = profit/10^6, 
+             size = budget/10^6,
+             color = content_rating)) + 
+  geom_point(alpha=0.5) + 
+  geom_hline(aes(yintercept = 29.2)) + 
+  geom_vline(aes(xintercept = 6.9)) + 
+  geom_text_repel(aes(label = movie_title),
+                  size=3) + 
+  theme_dark() +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
+  scale_colour_hue(l = 70, c = 150) +
+  labs(title = "Lucro vs IMDB Score - Top 20 (Maiores Orçamentos)",
+       x = "IMDB Score",
+       y = "Lucro",
+       colour = "Classificação de Conteúdo",
+       size = "Orçamento")
+
+grid.arrange(gp5,gp6,ncol=1)
+```
+
+### Discussão sobre o Terceiro Gráfico
+
+Assim como geram maiores lucros, filmes de classificação de conteúdo familiar tendem a receber maiores investimentos. Muitos filmes recebem menores investimentos por terem uma classificação de conteúdo para pessoas mais velhas, e muitos deles acabam tendo um caráter independente e não são produzidos por grandes estúdios, gerando orçamentos menores.
+Entre os 20 maiores orçamentos temos apenas filmes de classificação PG e PG-13, e fazendo um comparativo entre Orçamento vs Lucro vs IMDB Score, podemos perceber que pelo menos metade destes filmes ficaram abaixo da média no que diz repeito a lucro ou aceitação da crítica (imdb score). Entre os filmes mais caros, os maiores lucros foram gerados por Avatar, Vingadores, Vingadores: Era de Ultron, Piratas do Caribe, Capitão América: Guerra Civil e O Cavaleiro das Trevas Ressurge, da triologia Batman dirigida por Christopher Nolan.
+Entre os mais caros, o filme que melhor agregou lucro e aceitação da crítica foi Vingadores, com um lucro superior a 400 milhões e um IMDB Score superior a 8!
+
+## REFLEXÃO
+
+O projeto apresentou algumas dificuldades na sua execução pelo fato da plataforma Kaggle conter poucos datasets referentes a filmes, este que escolhi parece ser o mais completo, apesar de conter alguns dados que precisaram ser limpos.
+Após a limpeza dos dados o gráfico da matriz de correlações me ajudou a dar um norte para a minha pesquisa, percebendo que a quantidade de votos era uma variável bastante importante.
+A análise multivariada, usando cores para segmentar os filmes quanto à classificação de conteúdo foi fundamental para perceber um comportamento do público e indústria do cinema: filmes de caráter mais familiar e roteiro mais simples tendem a movimentar mais dinheiro, enquanto filmes mais complexos e com cenas mais fortes tendem a receber maior aclamação da crítica.
+Seria interessante que este dataset contivesse filmes mais recentes, mas considerei a amostragem satisfatória. Além disso o índice Metacritics e Rotten Tomatoes poderia tornar a análise mais aprofundada. A quantidade de prêmios/indicações dos filmes também seria uma variável interessante de ser analisada.
+Com isso, concluo minha análise e creio que os gráficos finais gerados respondem algumas perguntas importantes e ajudam a encontrar um padrão na indústria cinematográfica.
+
+
+
+
