@@ -95,7 +95,7 @@ Agora, vamos achar as dados nulos do nosso dataset.
 
 ```{r echo=FALSE}
 # Converte os zeros das seguintes colunas para NA
-IMDB[,c(9,23)][IMDB[,c(9,23)] == 0] <- NA
+IMDB[IMDB == 0] <- NA
 ```
 
 ```{r echo=FALSE}
@@ -114,19 +114,17 @@ nrow(IMDB)
 Ainda há uma boa quantidade de filmes para ser analisada. As demais variáveis com valores nulos serão ignoradas, ou terão seus valores substituídos pela média da coluna.
 
 ```{r echo=FALSE}
-# Substitui NA pelo valor médio (arredondado) para a variável facenumber_in_poster
-IMDB$facenumber_in_poster[is.na(IMDB$facenumber_in_poster)] <- round(mean(IMDB$facenumber_in_poster, na.rm = TRUE))
-# Converte os zeros das seguintes colunas para NA
-IMDB[,c(5,6,8,13,24,26)][IMDB[,c(5,6,8,13,24,26)] == 0] <- NA
 # Substitui NA pelo valor médio (arredondado) para as respectivas variáveis
-IMDB$num_critic_for_reviews[is.na(IMDB$num_critic_for_reviews)] <- round(mean(IMDB$num_critic_for_reviews, na.rm = TRUE))
 IMDB$duration[is.na(IMDB$duration)] <- round(mean(IMDB$duration, na.rm = TRUE))
 IMDB$director_facebook_likes[is.na(IMDB$director_facebook_likes)] <- round(mean(IMDB$director_facebook_likes, na.rm = TRUE))
-IMDB$actor_3_facebook_likes[is.na(IMDB$actor_3_facebook_likes)] <- round(mean(IMDB$actor_3_facebook_likes, na.rm = TRUE))
-IMDB$actor_1_facebook_likes[is.na(IMDB$actor_1_facebook_likes)] <- round(mean(IMDB$actor_1_facebook_likes, na.rm = TRUE))
 IMDB$cast_total_facebook_likes[is.na(IMDB$cast_total_facebook_likes)] <- round(mean(IMDB$cast_total_facebook_likes, na.rm = TRUE))
-IMDB$actor_2_facebook_likes[is.na(IMDB$actor_2_facebook_likes)] <- round(mean(IMDB$actor_2_facebook_likes, na.rm = TRUE))
 IMDB$movie_facebook_likes[is.na(IMDB$movie_facebook_likes)] <- round(mean(IMDB$movie_facebook_likes, na.rm = TRUE))
+IMDB$num_voted_users[is.na(IMDB$num_voted_users)] <- 
+  round(mean(IMDB$num_voted_users, na.rm = TRUE))
+IMDB$title_year[is.na(IMDB$title_year)] <- 
+  round(mean(IMDB$title_year, na.rm = TRUE))
+IMDB$imdb_score[is.na(IMDB$imdb_score)] <- 
+  round(mean(IMDB$imdb_score, na.rm = TRUE))
 ```
 
 Ainda falta ajustar a classificação de conteúdo dos filmes de modo que sejam mais atuais, algumas contidas no dataset não são mais utilizadas, além disso, valores nulos/em branco serão substituídos pela classificação mais popular, visto que não temos uma média que possa ser usada.
@@ -182,7 +180,14 @@ Novamente, a praticamente todos os filmes foram produzidos nos Estados Unidos, e
 
 ```{r echo=FALSE}
 # Excluindo algumas variáveis que não serão analisadas
-IMDB_data <- subset(IMDB, select = -c(country, num_critic_for_reviews, num_user_for_reviews, language, color, genres, facenumber_in_poster, plot_keywords, movie_imdb_link, aspect_ratio, actor_1_name, actor_1_facebook_likes, actor_2_name, actor_2_facebook_likes, actor_3_name, actor_3_facebook_likes))
+IMDB_data <- subset(IMDB, select = -c(country, num_critic_for_reviews, 
+                                      num_user_for_reviews, language, color, 
+                                      genres, facenumber_in_poster, 
+                                      plot_keywords, movie_imdb_link, 
+                                      aspect_ratio,actor_1_name, 
+                                      actor_1_facebook_likes, 
+                                      actor_2_name,actor_2_facebook_likes, 
+                                      actor_3_name,actor_3_facebook_likes))
 ```
 
 O último passo da nossa manipulação de dados será criar a variável lucro (profit) e com isso excluir a variável gross (ganhos)
@@ -396,7 +401,6 @@ Os scatter plots confirmam uma tendência de filmes com mais votos terem um lucro
 # Scatter plot relacionando lucro e orçamento
 ggplot(IMDB_data, aes(budget, profit)) + 
   geom_point()
-
 ```
 
 Este gráfico apresenta duas tendências: filmes caros que deram muito lucro e filmes caros que deram muito prejuízo, o que explica a correlação de praticamente 0 entre as variáveis lucro e orçamento.
@@ -430,11 +434,13 @@ ggplot(IMDB_data, aes(num_voted_users, profit/1000000, color=content_rating)) +
 
 Mesmo sendo a grande maioria na nossa análise, temos poucos filmes de classificação de conteúdo R entre os mais lucrativos.
 
+Como temos 1849 filmes na nossa análise, vamos selecionar os 20 filmes de maior valor em determinada variável (top 1%) para aprofundar nossa análise.
+
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 # Scatter plot relacionando lucro, número de votos e classificação de conteúdo
 IMDB_data %>%
   arrange(desc(profit)) %>%
-  top_n(30, profit) %>%
+  top_n(20, profit) %>%
   ggplot(aes(x=num_voted_users, y=profit/1000000, color=content_rating, size=budget/1000000)) +
   geom_point() +
   geom_text_repel(aes(label=movie_title))
@@ -458,7 +464,8 @@ ggplot(IMDB_data, aes(num_voted_users, imdb_score, color=content_rating)) +
 IMDB_data %>%
   arrange(desc(imdb_score)) %>%
   top_n(20, imdb_score) %>%
-  ggplot(aes(x=num_voted_users, y=imdb_score, color=content_rating, size=profit/1000000)) +
+  ggplot(aes(x=num_voted_users, y=imdb_score, 
+             color=content_rating, size=profit/1000000)) +
   geom_point() +
   geom_text_repel(aes(label=movie_title))
 ```
@@ -473,7 +480,8 @@ Destes quatro gráficos podemos tirar o seguinte:
 # Comparar imdb score e lucro considerando os 20 filmes mais caros
 IMDB_data %>%
   top_n(20, budget) %>%
-  ggplot(aes(x = imdb_score, y = profit/1000000, size = budget, color = content_rating)) + 
+  ggplot(aes(x = imdb_score, y = profit/1000000, 
+             size = budget, color = content_rating)) + 
   geom_point() + 
   geom_hline(aes(yintercept = 29.2)) + 
   geom_vline(aes(xintercept = 6.9)) + 
@@ -491,7 +499,8 @@ Entre os 20 filmes mais caros apenas um deles recebeu a classificação de conteúd
 
 ### Primeiro Gráfico
 ```{r primeiro_grafico, echo=FALSE, fig.width=7, fig.height=10}
-gp1 <- ggplot(IMDB_data, aes(num_voted_users, profit/10^6, color=content_rating)) + 
+gp1 <- ggplot(IMDB_data, aes(num_voted_users, profit/10^6, 
+                             color=content_rating)) + 
   geom_point(alpha=0.5) +
   geom_hline(aes(yintercept = 29.2), linetype = 2) +
   theme_dark() +
@@ -514,7 +523,7 @@ gp2 <- IMDB_data %>%
   theme(plot.title = element_text(hjust = 0.5),
         plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
   scale_colour_hue(l = 70, c = 150) +
-  labs(title = "Quantidade de votos vs Lucro - Top 20",
+  labs(title = "Quantidade de votos vs Lucro - Top 1%",
        x = "Quantidade de votos",
        y = "Lucro (milhões de US$)",
        colour = "Classificação de Conteúdo",
@@ -556,7 +565,7 @@ gp4 <- IMDB_data %>%
   theme(plot.title = element_text(hjust = 0.5),
         plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
   scale_colour_hue(l = 70, c = 150) +
-  labs(title = "Quantidade de votos vs IMDB Score - Top 20",
+  labs(title = "Quantidade de votos vs IMDB Score - Top 1%",
        x = "Quantidade de votos",
        y = "IMDB Score",
        colour = "Classificação de Conteúdo",
@@ -572,6 +581,7 @@ Quando o quesito é IMDB Score, vemos uma diferença clara quando comparado com o 
 No top20 dos mais bem avaliados temos The Shawshank Redemption, um drama que faz a pessoa se sentir bem ao seu final, mas que tem diversas cenas pesadas, os dois primeiros filmes da triologia Poderoso Chefão também possuem ótima avaliação. No mais, podemos ver dramas e filmes de crítica social com um conteúdo bastante pesado, como American History X, Clube da Luta e Cidade de Deus, além do sanguinário Pulp Fiction de Tarantino, todos com classificação de conteúdo R.
 Entre os filmes de maior imdb score que não possuem classificação de conteúdo R, podemos destacar Forest Gump, Senhor dos Anéis, Star Wars, Interstellar e Inception (estes dois últimos entram na lista de ficções científicas com um enredo mais elabora, o que faz com que tenham menos lucro, mesmo tendo elevada qualidade).
 
+### Terceiro Gráfico
 ```{r terceiro_grafico, echo=FALSE, fig.width=8, fig.height=10, }
 gp5 <- ggplot(IMDB_data, aes(num_voted_users, budget/10^6, color=content_rating)) + 
   geom_point(alpha=0.5) +
@@ -600,9 +610,9 @@ gp6 <- IMDB_data %>%
   theme(plot.title = element_text(hjust = 0.5),
         plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")) +
   scale_colour_hue(l = 70, c = 150) +
-  labs(title = "Lucro vs IMDB Score - Top 20 (Maiores Orçamentos)",
+  labs(title = "Lucro vs IMDB Score - Top 1% (Maiores Orçamentos)",
        x = "IMDB Score",
-       y = "Lucro",
+       y = "Lucro (milhões de US$)",
        colour = "Classificação de Conteúdo",
        size = "Orçamento")
 
