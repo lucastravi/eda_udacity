@@ -10,6 +10,7 @@
 The data used in this project is the [IMDB 5000 Movies Dataset](https://www.kaggle.com/carolzhangdc/imdb-5000-movie-dataset) from Kaggle.
 
 **Features**
+
   movie_title: Title of the Movie
   duration: Duration in minutes
   director_name: Name of the Director of the Movie
