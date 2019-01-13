@@ -115,10 +115,14 @@ Ainda há uma boa quantidade de filmes para ser analisada. As demais variáveis co
 
 ```{r echo=FALSE}
 # Substitui NA pelo valor médio (arredondado) para as respectivas variáveis
-IMDB$duration[is.na(IMDB$duration)] <- round(mean(IMDB$duration, na.rm = TRUE))
-IMDB$director_facebook_likes[is.na(IMDB$director_facebook_likes)] <- round(mean(IMDB$director_facebook_likes, na.rm = TRUE))
-IMDB$cast_total_facebook_likes[is.na(IMDB$cast_total_facebook_likes)] <- round(mean(IMDB$cast_total_facebook_likes, na.rm = TRUE))
-IMDB$movie_facebook_likes[is.na(IMDB$movie_facebook_likes)] <- round(mean(IMDB$movie_facebook_likes, na.rm = TRUE))
+IMDB$duration[is.na(IMDB$duration)] <- 
+  round(mean(IMDB$duration, na.rm = TRUE))
+IMDB$director_facebook_likes[is.na(IMDB$director_facebook_likes)] <- 
+  round(mean(IMDB$director_facebook_likes, na.rm = TRUE))
+IMDB$cast_total_facebook_likes[is.na(IMDB$cast_total_facebook_likes)] <- 
+  round(mean(IMDB$cast_total_facebook_likes, na.rm = TRUE))
+IMDB$movie_facebook_likes[is.na(IMDB$movie_facebook_likes)] <- 
+  round(mean(IMDB$movie_facebook_likes, na.rm = TRUE))
 IMDB$num_voted_users[is.na(IMDB$num_voted_users)] <- 
   round(mean(IMDB$num_voted_users, na.rm = TRUE))
 IMDB$title_year[is.na(IMDB$title_year)] <- 
@@ -541,7 +545,8 @@ No top5 dos mais lucrativos podemos ver Avatar, Jurassic World, Star Wars Ep. IV
 
 ### Segundo Gráfico
 ```{r segundo_grafico, echo=FALSE, fig.width=8, fig.height=10}
-gp3 <- ggplot(IMDB_data, aes(num_voted_users, imdb_score, color=content_rating)) + 
+gp3 <- ggplot(IMDB_data, aes(num_voted_users, 
+                             imdb_score, color=content_rating)) + 
   geom_point(alpha=0.5) +
   geom_hline(aes(yintercept = 6.9), linetype = 2) +
   theme_dark() +
@@ -583,7 +588,8 @@ Entre os filmes de maior imdb score que não possuem classificação de conteúdo R,
 
 ### Terceiro Gráfico
 ```{r terceiro_grafico, echo=FALSE, fig.width=8, fig.height=10, }
-gp5 <- ggplot(IMDB_data, aes(num_voted_users, budget/10^6, color=content_rating)) + 
+gp5 <- ggplot(IMDB_data, aes(num_voted_users, budget/10^6, 
+                             color=content_rating)) + 
   geom_point(alpha=0.5) +
   geom_hline(aes(yintercept = 35), linetype = 2) +
   theme_dark() +
